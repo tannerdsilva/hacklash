@@ -12,10 +12,5 @@ public struct _uint32_be:Sendable {}
 public struct TAI64N:Sendable {
 	let seconds:_uint64_be
 	let nano:_uint32_be
-
-	public init(seconds:UInt64, nano:UInt32) {
-		self.seconds = _uint64_be(RAW_native:seconds)
-		self.nano = _uint32_be(RAW_native:nano)
-	}
 }
 
