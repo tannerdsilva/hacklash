@@ -4,7 +4,7 @@ import RAW_hmac
 
 @RAW_staticbuff(bytes:32)
 internal struct Result32:Sendable, Hashable, Equatable, Comparable {}
-internal func hash<A>(_ data:borrowing A) throws -> Result32 where A:RAW_accessible {
+internal func wgHash<A>(_ data:borrowing A) throws -> Result32 where A:RAW_accessible {
 	let result = UnsafeMutableBufferPointer<UInt8>.allocate(capacity:32)
 	defer { result.deallocate() }
 	var newHasher = try RAW_blake2.Hasher<S, Result32>()
@@ -14,7 +14,7 @@ internal func hash<A>(_ data:borrowing A) throws -> Result32 where A:RAW_accessi
 
 @RAW_staticbuff(bytes:16)
 internal struct Result16:Sendable, Hashable, Equatable, Comparable {}
-internal func mac<K, A>(key:K, data:borrowing A) throws -> Result16 where A:RAW_accessible, K:RAW_accessible {
+internal func wgMac<K, A>(key:K, data:borrowing A) throws -> Result16 where A:RAW_accessible, K:RAW_accessible {
 	let result = UnsafeMutableBufferPointer<UInt8>.allocate(capacity:32)
 	defer { result.deallocate() }
 	var newHasher = try RAW_blake2.Hasher<S, Result16>(key:key)
@@ -22,7 +22,7 @@ internal func mac<K, A>(key:K, data:borrowing A) throws -> Result16 where A:RAW_
 	return try newHasher.finish()
 }
 
-internal func hmac<K, A>(key:K, data:borrowing A) throws -> Result32 where A:RAW_accessible, K:RAW_accessible {
+internal func wgHmac<K, A>(key:K, data:borrowing A) throws -> Result32 where A:RAW_accessible, K:RAW_accessible {
 	var hmac = try HMAC<RAW_blake2.Hasher<S, UnsafeMutableRawPointer>>(key:key)
 	try hmac.update(message:data)
 	return Result32(RAW_staticbuff:try hmac.finish())
