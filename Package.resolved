@@ -1,12 +1,30 @@
 {
   "pins" : [
     {
-      "identity" : "rawdog",
+      "identity" : "clmdb",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/tannerdsilva/rawdog.git",
+      "location" : "https://github.com/tannerdsilva/CLMDB.git",
+      "state" : {
+        "branch" : "master3",
+        "revision" : "96614bd44a439058a932aee7ff915c5153f4a11d"
+      }
+    },
+    {
+      "identity" : "quicklmdb",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tannerdsilva/QuickLMDB.git",
       "state" : {
         "branch" : "hacklash",
-        "revision" : "762fc5a24386b3b0430f42ead186ff70584523ec"
+        "revision" : "2fb8002852c6519e0c0988b14d0221be5f6b601d"
+      }
+    },
+    {
+      "identity" : "swift-async-algorithms",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-async-algorithms.git",
+      "state" : {
+        "revision" : "6ae9a051f76b81cc668305ceed5b0e0a7fd93d20",
+        "version" : "1.0.1"
       }
     },
     {
@@ -46,12 +64,21 @@
       }
     },
     {
+      "identity" : "swift-service-lifecycle",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swift-server/swift-service-lifecycle.git",
+      "state" : {
+        "revision" : "d58e6bf2b1ae2884cf204a8b5bcaaa7aae3c1ff0",
+        "version" : "2.6.0"
+      }
+    },
+    {
       "identity" : "swift-syntax",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-syntax.git",
       "state" : {
-        "revision" : "08a2f0a9a30e0f705f79c9cfaca1f68b71bdc775",
-        "version" : "510.0.0"
+        "revision" : "64889f0c732f210a935a0ad7cda38f77f876262d",
+        "version" : "509.1.1"
       }
     },
     {
