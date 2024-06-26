@@ -8,6 +8,6 @@ internal func dhGenerate() throws -> (PublicKey, PrivateKey) {
 	return (publicKey, privateKey)
 }
 
-internal func dhKeyExchange(privateKey: PrivateKey, publicKey: PublicKey) throws -> SharedKey {
+internal func dhKeyExchange(privateKey:borrowing PrivateKey, publicKey:consuming PublicKey) throws -> SharedKey {
 	return SharedKey.compute(privateKey: privateKey, publicKey: publicKey)
 }

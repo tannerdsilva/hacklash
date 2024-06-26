@@ -20,30 +20,30 @@ internal struct CountedNonce:Sendable {
 	}
 }
 
-internal func aeadEncrypt(key:Key32, counter:UInt64, text:borrowing [UInt8], aad:consuming [UInt8]) throws -> ([UInt8], Tag) {
-	let cipherText = UnsafeMutableBufferPointer<UInt8>.allocate(capacity:text.count)
-	defer { cipherText.deallocate() }
+internal func aeadEncrypt<A>(key:Key32, counter:UInt64, text:borrowing A, aad:consuming [UInt8]) throws -> ([UInt8], Tag) where A:RAW_accessible {
 	var context = RAW_chachapoly.Context(key:key)
-	let ourTag = try text.RAW_access { textBuff in
-		try aad.RAW_access { aadBuff in
+	return try text.RAW_access { textBuff in
+		let cipherText = UnsafeMutableBufferPointer<UInt8>.allocate(capacity:textBuff.count)
+		defer { cipherText.deallocate() }
+		let tag = try aad.RAW_access { aadBuff in
 			return try CountedNonce(counter: counter).RAW_access_staticbuff { 
 				try context.encrypt(nonce:$0.load(as:Nonce.self), associatedData:aadBuff, inputData:textBuff, output:cipherText.baseAddress!)
 			}
 		}
+		return (Array(cipherText), tag)
 	}
-	return (Array(cipherText), ourTag)
 }
 
-internal func aeadDecrypt(key:Key32, counter:UInt64, cipherText:borrowing [UInt8], aad:consuming [UInt8], tag:Tag) throws -> [UInt8] {
-	let plainText = UnsafeMutableBufferPointer<UInt8>.allocate(capacity:cipherText.count)
-	defer { plainText.deallocate() }
+internal func aeadDecrypt<A>(key:Key32, counter:UInt64, cipherText:borrowing A, aad:consuming [UInt8], tag:Tag) throws -> [UInt8] where A:RAW_accessible {
 	var context = RAW_chachapoly.Context(key:key)
-	try cipherText.RAW_access { cipherTextBuff in
+	return try cipherText.RAW_access { cipherTextBuff in
+		let plainText = UnsafeMutableBufferPointer<UInt8>.allocate(capacity:cipherTextBuff.count)
+		defer { plainText.deallocate() }
 		try aad.RAW_access { aadBuff in
 			try CountedNonce(counter: counter).RAW_access_staticbuff { 
 				try context.decrypt(tag:tag, nonce:$0.load(as:Nonce.self), associatedData:aadBuff, inputData:cipherTextBuff, output:plainText.baseAddress!)
 			}
 		}
+		return Array(plainText)
 	}
-	return Array(plainText)
 }

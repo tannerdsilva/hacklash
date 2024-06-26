@@ -3,37 +3,124 @@ import RAW_dh25519
 import RAW_chachapoly
 
 @RAW_staticbuff(bytes:3)
-fileprivate struct Reserved:Sendable {}
-@RAW_staticbuff(bytes:4)
-fileprivate struct SenderIndex:Sendable {}
-
-@RAW_staticbuff(concat:RAW_byte, Reserved, SenderIndex, PublicKey)
+fileprivate struct Reserved:Sendable {
+	fileprivate init() {
+		self = Self(RAW_staticbuff:[0, 0, 0])
+	}
+}
 fileprivate struct HandshakeInitiationMessage:Sendable {
+	
+	@RAW_staticbuff(concat:RAW_byte, Reserved, PeerIndex, PublicKey, Result32, TAI64N)
+	fileprivate struct Payload:Sendable {
+		let typeContent:RAW_byte
+		let reservedContent:Reserved
+		let senderIndex:PeerIndex
+		let ephemeral:PublicKey
+		let staticRegion:Result32
+		let timestamp:TAI64N
+		
+		init(iPublicKey myself:PublicKey, rPublicKey target:PublicKey, peerIndex:consuming PeerIndex) throws {
+			typeContent = 0x1
+			reservedContent = Reserved()
+			senderIndex = peerIndex
+			
+			// step 1: calculate the hash of the static construction string
+			var c = try wgHash([UInt8]("Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s".utf8))
 
-	let typeContent:RAW_byte
-	let reservedContent:Reserved
-	let senderIndexContent:SenderIndex
-	let ephemeral:PublicKey
+			// step 2: h = hash(ci || identifier)
+			var h:Result32 = try c.RAW_access {
+				return try wgHash([UInt8]($0) + [UInt8]("Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s".utf8))
+			}
 
-	init(publicKey:PublicKey) throws {
-		var ci = try wgHash([UInt8]("Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s".utf8))
-		var hi:Result32 = try ci.RAW_access {
-			return try wgHash([UInt8]($0) + [UInt8]("Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s".utf8))
-		}
-		try publicKey.RAW_access { publicKeyPtr in
-			try hi.RAW_access { hiPtr in
-				hi = try wgHash([UInt8](hiPtr) + [UInt8](publicKeyPtr))
+			// step 3: h = hash(h || target public key)
+			h = try target.RAW_access { publicKeyPtr in
+				return try h.RAW_access { hPtr in
+					return try wgHash([UInt8](hPtr) + [UInt8](publicKeyPtr))
+				}
 			}
-		}
-		let ephPrivate = try PrivateKey()
-		let ephPublic = PublicKey(ephPrivate)
-		try ephPublic.RAW_access { ephPublicPtr in
-			ci = try kdf(n:1, key:PublicKey(RAW_staticbuff:&ci), data:[UInt8](ephPublicPtr)).first!
-		}
-		hi = try hi.RAW_access { hiPtr in
-			try ephPublic.RAW_access { ephPublicPtr in
-				return try wgHash([UInt8](hiPtr) + [UInt8](ephPublicPtr))
+
+			// step 4: generate ephemeral keys
+			let ephiPrivate = try PrivateKey()
+			let ephiPublic = PublicKey(ephiPrivate)
+
+			// step 5: c = KDF^1(c, e.Public)
+			c = try ephiPublic.RAW_access { ephPublicPtr in
+				return try wgKDF(key:PublicKey(RAW_staticbuff:&c), data:[UInt8](ephPublicPtr), returning:(Result32).self)
 			}
+
+			// step 6: assign e.Public to the ephemeral field
+			ephemeral = ephiPublic
+
+			// step 7: k = KDF^2(c, e.Public)
+			h = try h.RAW_access { hPtr in
+				try ephiPublic.RAW_access { ephPublicPtr in
+					return try wgHash([UInt8](hPtr) + [UInt8](ephPublicPtr))
+				}
+			}
+			 
+			// step 8: (c, k) = KDF^2(c, dh(eiPriv, srPublic))
+			var k:Result32
+			(c, k) = try h.RAW_access { hPtr in
+				return try wgKDF(key:PublicKey(RAW_staticbuff:&c), data:try dhKeyExchange(privateKey:ephiPrivate, publicKey:target), returning:(Result32, Result32).self)
+			}
+
+			// step 9: msg.static = AEAD(k, 0, siPublic, h)
+			var (msgStatic, _) = try k.RAW_access_staticbuff { kPtr in
+				try h.RAW_access { hPtr in
+					return try aeadEncrypt(key:kPtr.load(as:Key32.self), counter:0, text:myself, aad:[UInt8](hPtr))
+				}
+			}
+			staticRegion = Result32(RAW_staticbuff:&msgStatic)
+
+			// step 10: h = hash(h || msg.static)
+			h = try h.RAW_access({ hPtr in
+				try msgStatic.RAW_access({ msgStaticPtr in
+					return try wgHash([UInt8](hPtr) + [UInt8](msgStaticPtr))
+				})
+			})
+
+			// step 11: c, k) = kdf^2(c, dh(sipriv, srpub))
+			(c, k) = try h.RAW_access({ hPtr in
+				return try wgKDF(key:PublicKey(RAW_staticbuff:&c), data:[UInt8](hPtr), returning:(Result32, Result32).self)
+			})
+
+			// step 12: msg.timestamp = AEAD(k, 0, timestamp(), h)
+			let ts = try h.RAW_access({ hPtr in
+				try k.RAW_access_staticbuff({ kPtr in
+					try aeadEncrypt(key:kPtr.load(as:Key32.self), counter:0, text:TAI64N(), aad:[UInt8](hPtr)).0.RAW_access({ ptrIn in
+						return TAI64N(RAW_staticbuff:ptrIn.baseAddress!)
+					})
+				})
+			})
+			timestamp = ts
+
+			// step 13: h = hash(h || msg.timestamp)
+			h = try h.RAW_access({ hPtr in
+				try ts.RAW_access({ timestampPtr in
+					return try wgHash([UInt8](hPtr) + [UInt8](timestampPtr))
+				})
+			})
 		}
+	}
+
+	
+}
+
+fileprivate struct InitiationResponseMessage:Sendable {
+	fileprivate struct Payload:Sendable {
+		let typeContent:RAW_byte
+		let reservedContent:Reserved
+		let senderIndex:PeerIndex
+		let receiverIndex:PeerIndex
+		let ephemeral:PublicKey
+		let empty:Tag
+
+		// init(receivingResponse:borrowing PeerIndex) throws {
+		// 	typeContent = 0x2
+		// 	let ephPrivate = try PrivateKey()
+		// 	let ephPublic = PublicKey(ephPrivate)
+		// 	// var cr = wgKDF(
+		// }
+	
 	}
 }
