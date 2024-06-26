@@ -3,14 +3,15 @@ import RAW_dh25519
 import RAW_chachapoly
 
 @RAW_staticbuff(bytes:3)
-fileprivate struct Reserved:Sendable {
-	fileprivate init() {
+internal struct Reserved:Sendable {
+	internal init() {
 		self = Self(RAW_staticbuff:[0, 0, 0])
 	}
 }
-fileprivate struct HandshakeInitiationMessage:Sendable {
-	
-	public static func computeInitiationValues(iPeerIndex:PeerIndex, iPublicKey:PublicKey, rPublicKey:PublicKey, into destinationPayload:UnsafeMutablePointer<Payload?>? = nil) throws -> (c:Result32, h:Result32, k:Result32) {
+
+
+internal struct HandshakeInitiationMessage:Sendable {
+	internal static func computeInitiationValues(iPeerIndex:PeerIndex, iPublicKey:PublicKey, rPublicKey:PublicKey, into destinationPayload:UnsafeMutablePointer<Payload?>? = nil) throws -> (c:Result32, h:Result32, k:Result32) {
 		// step 1: calculate the hash of the static construction string
 		var c = try wgHash([UInt8]("Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s".utf8))
 
@@ -31,9 +32,7 @@ fileprivate struct HandshakeInitiationMessage:Sendable {
 		let ephiPublic = PublicKey(ephiPrivate)
 
 		// step 5: c = KDF^1(c, e.Public)
-		c = try ephiPublic.RAW_access { ephPublicPtr in
-			return try wgKDF(key:PublicKey(RAW_staticbuff:&c), data:[UInt8](ephPublicPtr), returning:(Result32).self)
-		}
+		c =  try wgKDF(key:PublicKey(RAW_staticbuff:&c), data:ephiPublic, returning:(Result32).self)
 
 		// step 6: assign e.Public to the ephemeral field
 		let msgEphemeral = ephiPublic
