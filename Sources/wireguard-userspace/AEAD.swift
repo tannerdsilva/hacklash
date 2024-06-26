@@ -20,7 +20,7 @@ internal struct CountedNonce:Sendable {
 	}
 }
 
-internal func aeadEncrypt<A>(key:Key32, counter:UInt64, text:borrowing A, aad:consuming [UInt8]) throws -> ([UInt8], Tag) where A:RAW_accessible {
+internal func aeadEncrypt<A, D>(key:Key32, counter:UInt64, text:borrowing A, aad:consuming D) throws -> ([UInt8], Tag) where A:RAW_accessible, D:RAW_accessible {
 	var context = RAW_chachapoly.Context(key:key)
 	return try text.RAW_access { textBuff in
 		let cipherText = UnsafeMutableBufferPointer<UInt8>.allocate(capacity:textBuff.count)
@@ -34,7 +34,7 @@ internal func aeadEncrypt<A>(key:Key32, counter:UInt64, text:borrowing A, aad:co
 	}
 }
 
-internal func aeadDecrypt<A>(key:Key32, counter:UInt64, cipherText:borrowing A, aad:consuming [UInt8], tag:Tag) throws -> [UInt8] where A:RAW_accessible {
+internal func aeadDecrypt<A, D>(key:Key32, counter:UInt64, cipherText:borrowing A, aad:consuming D, tag:Tag) throws -> [UInt8] where A:RAW_accessible, D:RAW_accessible {
 	var context = RAW_chachapoly.Context(key:key)
 	return try cipherText.RAW_access { cipherTextBuff in
 		let plainText = UnsafeMutableBufferPointer<UInt8>.allocate(capacity:cipherTextBuff.count)

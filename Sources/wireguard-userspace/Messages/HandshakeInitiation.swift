@@ -10,7 +10,7 @@ fileprivate struct Reserved:Sendable {
 }
 fileprivate struct HandshakeInitiationMessage:Sendable {
 	
-	public static func computeInitiationValues(into destinationPayload:UnsafeMutablePointer<Payload?>?, iPeerIndex:PeerIndex, iPublicKey:PublicKey, rPublicKey:PublicKey) throws -> (c:Result32, h:Result32, k:Result32) {
+	public static func computeInitiationValues(iPeerIndex:PeerIndex, iPublicKey:PublicKey, rPublicKey:PublicKey, into destinationPayload:UnsafeMutablePointer<Payload?>? = nil) throws -> (c:Result32, h:Result32, k:Result32) {
 		// step 1: calculate the hash of the static construction string
 		var c = try wgHash([UInt8]("Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s".utf8))
 
@@ -110,7 +110,7 @@ fileprivate struct HandshakeInitiationMessage:Sendable {
 		internal let timestamp:TAI64N
 
 		/// initializes a new HandshakeInitiationMessage
-		init(initiatorPeerIndex:PeerIndex, ephemeral:PublicKey, staticRegion:Result32, timestamp:TAI64N) {
+		fileprivate init(initiatorPeerIndex:PeerIndex, ephemeral:PublicKey, staticRegion:Result32, timestamp:TAI64N) {
 			typeContent = 0x1
 			reservedContent = Reserved()
 			self.initiatorPeerIndex = initiatorPeerIndex
