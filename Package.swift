@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "hacklash",
 	platforms:[
-		.macOS(.v12)
+		.macOS(.v14)
 	],
 	products: [
 		.library(name:"wireguard-userspace", targets:["wireguard-userspace"]),
@@ -13,6 +13,9 @@ let package = Package(
 		.package(path:"../rawdog"),
 		// .package(url:"https://github.com/tannerdsilva/rawdog.git", branch:"hacklash"),
 		.package(url:"https://github.com/apple/swift-nio.git", "2.50.0"..<"3.0.0"),
+		.package(url:"https://github.com/apple/swift-service-lifecycle.git", "2.4.0"..<"3.0.0"),
+		.package(url:"https://github.com/tannerdsilva/ws-kit.git", branch:"hacklash"),
+		.package(url:"https://github.com/apple/swift-log.git", "1.0.0"..<"2.0.0"),
 		// .package(url:"https://github.com/tannerdsilva/bedrock.git", branch:"hacklash")
 		.package(path:"../bedrock")
 	],
@@ -28,6 +31,8 @@ let package = Package(
 				.product(name:"RAW_xchachapoly", package:"rawdog"),
 				.product(name:"RAW_blake2", package:"rawdog"),
 				.product(name:"RAW_hmac", package:"rawdog"),
+				.product(name:"ServiceLifecycle", package:"swift-service-lifecycle"),
+				.product(name:"WebCore", package:"ws-kit"),
 			]
 		),
 		.executableTarget(name:"hacklash", dependencies:[

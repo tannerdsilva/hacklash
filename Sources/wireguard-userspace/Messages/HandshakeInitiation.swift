@@ -11,7 +11,7 @@ internal struct Reserved:Sendable {
 
 
 internal struct HandshakeInitiationMessage:Sendable {
-	internal static func computeInitiationValues(iPeerIndex:PeerIndex, iPublicKey:PublicKey, rPublicKey:PublicKey, into destinationPayload:UnsafeMutablePointer<Payload?>? = nil) throws -> (c:Result32, h:Result32, k:Result32) {
+	internal static func computeInitiationValues(iPublicKey:PublicKey, rPublicKey:PublicKey, into destinationPayload:UnsafeMutablePointer<Payload?>? = nil) throws -> (c:Result32, h:Result32, k:Result32) {
 		// step 1: calculate the hash of the static construction string
 		var c = try wgHash([UInt8]("Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s".utf8))
 
@@ -86,7 +86,7 @@ internal struct HandshakeInitiationMessage:Sendable {
 		})
 
 		if destinationPayload != nil {
-			destinationPayload!.pointee = Payload(initiatorPeerIndex:iPeerIndex, ephemeral:msgEphemeral, staticRegion:Result32(RAW_staticbuff:&msgStatic), timestamp:ts)
+			destinationPayload!.pointee = Payload(initiatorPeerIndex:try PeerIndex.random(), ephemeral:msgEphemeral, staticRegion:Result32(RAW_staticbuff:&msgStatic), timestamp:ts)
 		}
 
 		return (c, h, k)
@@ -117,9 +117,7 @@ internal struct HandshakeInitiationMessage:Sendable {
 			self.staticRegion = staticRegion
 			self.timestamp = timestamp
 		}
-	}
-
-	
+	}	
 }
 
 fileprivate struct InitiationResponseMessage:Sendable {

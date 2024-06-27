@@ -1,66 +1,68 @@
 import RAW
 import NIO
 import RAW_dh25519
+import ServiceLifecycle
 
 public typealias Key = RAW_dh25519.PublicKey
 
-public final class WireguardConnection {
-
-	// EventLoopGroup to handle async operations
+public final class WireguardInterface:Service {
 	let elg: EventLoopGroup
+	let listeningPort:Int
+	let staticPublicKey:PublicKey
 
-	var connectedChannel:Channel?
+	let connectedChannel:EventLoopFuture<Channel>
+	let peerRouter:PeerRouter
 
-	public init(loopGroupProvider: EventLoopGroup) {
+	public init(loopGroupProvider:EventLoopGroup, staticPublicKey:PublicKey, listeningPort:Int? = nil) {
 		self.elg = loopGroupProvider
-		self.connectedChannel = nil
+
+		let lp:Int
+		if let listeningPort = listeningPort {
+			self.listeningPort = listeningPort
+			lp = listeningPort
+		} else {
+			lp = Int.random(in:10000..<16000)
+			self.listeningPort = lp
+		}
+
+		let pr = PeerRouter()
+		self.peerRouter = pr
+		self.staticPublicKey = staticPublicKey
+		self.connectedChannel = DatagramBootstrap(group:elg.next())
+			.channelOption(ChannelOptions.socketOption(.so_reuseaddr), value:1)
+			.channelInitializer({ [pr] channel in
+				return channel.pipeline.addHandler(pr)
+			}).bind(host:"0.0.0.0", port:lp)
 	}
 
-	public func connect(address:String, port:Int) async throws {
-		 self.connectedChannel = try await DatagramBootstrap(group:elg.next())
-			.channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
-			.channelInitializer({ channel in
-				print("Connected to \(address):\(port)")
-				return channel.pipeline.addHandler(UDPTunnel(host: address, port: port))
-			}).bind(host: "0.0.0.0", port:Int.random(in:10000..<16000)).get()
+	public func run() async throws {
+		let channel = try await self.connectedChannel.get()
+		try await gracefulShutdown()
+		print("WireguardInterface is running")
+		try? await channel.close()
 	}
-
-	
 }
 
 // Handler to process incoming and outgoing data
-final class UDPTunnel: ChannelInboundHandler {
-    typealias InboundIn = AddressedEnvelope<ByteBuffer>
-    typealias OutboundOut = AddressedEnvelope<ByteBuffer>
+final class PeerRouter: ChannelInboundHandler {
+	typealias InboundIn = AddressedEnvelope<ByteBuffer>
+	typealias OutboundOut = AddressedEnvelope<ByteBuffer>
 
-	let host: String
-	let port: Int
+	init() {}
 
-	init(host: String, port: Int) {
-		self.host = host
-		self.port = port
+	func channelActive(context:ChannelHandlerContext) {
+		
+	}
+	
+	func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+		let envelope = self.unwrapInboundIn(data)
+		if let receivedString = envelope.data.getString(at: 0, length: envelope.data.readableBytes) {
+			print("Received: \(receivedString)")
+		}
 	}
 
-    func channelActive(context: ChannelHandlerContext) {
-		print("Channel active")
-        let message = "Hello from SwiftNIO UDP Client!"
-        var buffer = context.channel.allocator.buffer(capacity: message.utf8.count)
-        buffer.writeString(message)
-        
-        let remoteAddress = try! SocketAddress(ipAddress: host, port: port)
-        let envelope = AddressedEnvelope(remoteAddress: remoteAddress, data: buffer)
-        context.writeAndFlush(self.wrapOutboundOut(envelope), promise: nil)
-    }
-    
-    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        let envelope = self.unwrapInboundIn(data)
-        if let receivedString = envelope.data.getString(at: 0, length: envelope.data.readableBytes) {
-            print("Received: \(receivedString)")
-        }
-    }
-
-    func errorCaught(context: ChannelHandlerContext, error: Error) {
-        print("Error: \(error)")
-        context.close(promise: nil)
-    }
+	func errorCaught(context: ChannelHandlerContext, error: Error) {
+		print("Error: \(error)")
+		context.close(promise: nil)
+	}
 }
