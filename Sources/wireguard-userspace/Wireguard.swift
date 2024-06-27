@@ -2,6 +2,7 @@ import RAW
 import NIO
 import RAW_dh25519
 import ServiceLifecycle
+import WebCore
 
 public typealias Key = RAW_dh25519.PublicKey
 
@@ -38,27 +39,28 @@ public final class WireguardInterface:Service {
 	public func run() async throws {
 		let channel = try await self.connectedChannel.get()
 		try await gracefulShutdown()
-		print("WireguardInterface is running")
 		try? await channel.close()
 	}
 }
 
 // Handler to process incoming and outgoing data
-final class PeerRouter: ChannelInboundHandler {
-	typealias InboundIn = AddressedEnvelope<ByteBuffer>
-	typealias OutboundOut = AddressedEnvelope<ByteBuffer>
+internal final class PeerRouter:ChannelDuplexHandler {
+	internal typealias InboundIn = AddressedEnvelope<ByteBuffer>
+	internal typealias InboundOut = AddressedEnvelope<ByteBuffer>
+	internal typealias OutboundIn = AddressedEnvelope<ByteBuffer>
+	internal typealias OutboundOut = AddressedEnvelope<ByteBuffer>
 
-	init() {}
+	private var handshakeStages = [SocketAddress:Int]()
+	
+	internal init() {}
 
-	func channelActive(context:ChannelHandlerContext) {
+	internal func channelActive(context:ChannelHandlerContext) {
 		
 	}
 	
 	func channelRead(context: ChannelHandlerContext, data: NIOAny) {
 		let envelope = self.unwrapInboundIn(data)
-		if let receivedString = envelope.data.getString(at: 0, length: envelope.data.readableBytes) {
-			print("Received: \(receivedString)")
-		}
+		
 	}
 
 	func errorCaught(context: ChannelHandlerContext, error: Error) {
