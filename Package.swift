@@ -7,7 +7,7 @@ let package = Package(
 		.macOS(.v14)
 	],
 	products: [
-		.library(name:"wireguard-userspace", targets:["wireguard-userspace"]),
+		.library(name:"wireguard-userspace-nio", targets:["wireguard-userspace-nio"]),
 	],
 	dependencies: [
 		.package(path:"../rawdog"),
@@ -21,7 +21,7 @@ let package = Package(
 	],
     targets: [
 		.target(
-			name:"wireguard-userspace",
+			name:"wireguard-userspace-nio",
 			dependencies: [
 				.product(name:"RAW", package:"rawdog"),
 				.product(name:"RAW_dh25519", package:"rawdog"),
@@ -36,7 +36,7 @@ let package = Package(
 			]
 		),
 		.executableTarget(name:"hacklash", dependencies:[
-			"wireguard-userspace",
+			"wireguard-userspace-nio",
 			.product(name:"NIO", package:"swift-nio"),
 		])
     ]
